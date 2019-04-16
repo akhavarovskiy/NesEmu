@@ -1,8 +1,5 @@
 NES Emulator 
 ============
-
-## Team members: Aleksandr Khavarovskiy, Saeed Alsahari, Shanpreet Singh, Daniel Kernazhytski
-
 ![Alt text](/images/ss2.png)
 
 ## Unix Build:
