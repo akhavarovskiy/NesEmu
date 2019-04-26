@@ -1,7 +1,7 @@
 
 INCLUDE    = 6502/include
 LIB        = 6502/lib
-BUILD_NAME = nesex
+BUILD_NAME = NesEmu
 OBJECTS    = 
 FLAGS      = -std=c++11 -m64 -Ofast -g
 
