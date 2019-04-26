@@ -9,8 +9,7 @@ NES Emulator
 
 ## Credits
  Bitqwit PPU code is used to calculate all the rendering logic for this 
- emulator. We were under time constraints his code help us tremendously,
- can't thank him enough.
+ emulator.
  
  [Link to his Youtube Channel](https://www.youtube.com/channel/UCKTehwyGCKF-b2wo0RKwrcg)
  
