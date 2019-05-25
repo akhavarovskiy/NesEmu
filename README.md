@@ -2,6 +2,8 @@ NES Emulator
 ============
 ![Alt text](/images/ss2.png)
 
+## Contributors
+Alex Khavarovskiy, Daniil Kernazhytski, Shanpreet Singh, Saeed Saeed AlSarhi
 ## Unix Build:
 * Download the SDL2 libraries for your version of Unix OS.
 * Download make for your version of UNIX.
