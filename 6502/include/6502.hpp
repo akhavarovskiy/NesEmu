@@ -52,12 +52,12 @@ REG;
   6502 Interrupt Flags
 =======================================================================
 */
-typedef struct 
+typedef struct
 {
   bool IRQ_TRIGGER;
   bool NMI_TRIGGER;
   bool NMI_TRIGGER_EDGE;
-  bool RST_TRIGGER; 
+  bool RST_TRIGGER;
 }
 INT;
 
@@ -70,8 +70,8 @@ INT;
 class ICPUBus {
 public:
   virtual uint8_t Read (uint16_t addr) = 0;
-  virtual void    Write(uint16_t addr, uint8_t v);
-  virtual void    Tick ();
+  virtual void    Write(uint16_t addr, uint8_t v) = 0;
+  virtual void    Tick () = 0;
 };
 
 /*
@@ -79,7 +79,7 @@ public:
   6502 CPU State Class
 =======================================================================
 */
-class CPU : public ICPUBus 
+class CPU : public ICPUBus
 {
   REG m_register;
   INT m_interrupt;
@@ -108,8 +108,8 @@ private:
   inline uint16_t RELATIVE();
   inline uint16_t INDIRECT();
   inline uint16_t INDIRECT_X();
-  inline uint16_t INDIRECT_Y();  
-  /* Official Instruction Set */ 
+  inline uint16_t INDIRECT_Y();
+  /* Official Instruction Set */
   inline void ADC(uint16_t address);
   inline void AND(uint16_t address);
   inline void ASL(uint16_t address);
@@ -134,7 +134,7 @@ private:
   inline void DEC(uint16_t address);
   inline void DEX();
   inline void DEY();
-  inline void EOR();
+  inline void EOR(uint16_t address);
   inline void INC(uint16_t address);
   inline void INX();
   inline void INY();
@@ -172,5 +172,5 @@ private:
   inline void TYA();
 };
 
-} /* namespace MOS6502 */  
+} /* namespace MOS6502 */
 #endif
