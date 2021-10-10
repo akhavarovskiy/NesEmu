@@ -173,10 +173,14 @@
 
 namespace MOS6502 {
 
-
 CPU::CPU()
 {
   RST();
+}
+
+CPU::~CPU()
+{
+
 }
 
 inline void CPU::TriggerIRQ()
@@ -194,14 +198,14 @@ inline void CPU::TriggerRST()
   m_interrupt.RST_TRIGGER = !m_interrupt.RST_TRIGGER;
 }
 
-inline void CPU::Step(void)
+void CPU::Step(void)
 {
   /* Grab the instruction and increment the Program Counter */
   uint16_t a;
   uint8_t c = Read( m_register.PC++ );
   switch (c)
   {
-  /* Immediate instuctions */
+  /* Immediate Instructions */
   case MOS6502_ADC_IMMEDIATE: a = IMMEDIATE();  ADC(a); break;
   case MOS6502_AND_IMMEDIATE: a = IMMEDIATE();  AND(a); break;
   case MOS6502_CMP_IMMEDIATE: a = IMMEDIATE();  CMP(a); break;
@@ -516,7 +520,7 @@ inline void CPU::AND(uint16_t address) {
 inline void CPU::ASL(uint16_t address) {
   uint8_t  m =  Read( address );
   m_register.PS.C =  m >> 0x07;
-  m                     =  m << 0x01;
+  m               =  m << 0x01;
   m_register.PS.Z = !m;
   m_register.PS.N =  m >> 0x07;
   Write( address, m );
@@ -551,7 +555,7 @@ inline void CPU::BCS()
   {
     /* Additional Cycle on taken branch */
     Tick();
-    /* Additional Cycle on page boundry cros*/
+    /* Additional Cycle on page boundary cross*/
     if((r ^ m_register.PC ) & 0xFF00)
       Tick();
 

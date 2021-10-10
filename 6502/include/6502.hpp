@@ -64,23 +64,23 @@ INT;
   * Purposely undefined to enforce this the function implementation */
 class ICPUBus {
 public:
-  virtual uint8_t Read (uint16_t addr) = 0;
-  virtual void    Write(uint16_t addr, uint8_t v) = 0;
-  virtual void    Tick () = 0;
+  virtual uint8_t Read (uint16_t addr);
+  virtual void    Write(uint16_t addr, uint8_t v);
+  virtual void    Tick ();
 };
 
 /*=====================================================================
   6502 CPU State Class
   =====================================================================*/
-class CPU : public ICPUBus
+class CPU : public virtual ICPUBus
 {
   REG m_register;
   INT m_interrupt;
 public:
   CPU();
-  virtual ~CPU();
+  ~CPU();
   /* Execute single instruction */
-  inline void Step(void);
+  void Step(void);
   /* External interrupt triggers */
   inline void TriggerIRQ();
   inline void TriggerNMI();
@@ -166,4 +166,5 @@ private:
 };
 
 } /* namespace MOS6502 */
-#endif
+
+#endif /* MOS6502_HPP__ */
