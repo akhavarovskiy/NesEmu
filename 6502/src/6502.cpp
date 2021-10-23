@@ -1,181 +1,14 @@
 #include "../include/6502.hpp"
+#include "../include/6502def.hpp"
+
 #include <cstring>
 #include <exception>
-
-/* Vector Address's */
-#define NMI_ADDRESS 0xFFFA
-#define RST_ADDRESS 0xFFFC
-#define IRQ_ADDRESS 0xFFFE
-
-/* Macros defining the instuction and its address mode */
-#define MOS6502_ADC_IMMEDIATE   0x69
-#define MOS6502_AND_IMMEDIATE   0x29
-#define MOS6502_CMP_IMMEDIATE   0xC9
-#define MOS6502_CPY_IMMEDIATE   0xC0
-#define MOS6502_CPX_IMMEDIATE   0xE0
-#define MOS6502_EOR_IMMEDIATE   0x49
-#define MOS6502_LDA_IMMEDIATE   0xA9
-#define MOS6502_LDX_IMMEDIATE   0xA2
-#define MOS6502_LDY_IMMEDIATE   0xA0
-#define MOS6502_ORA_IMMEDIATE   0x09
-#define MOS6502_SBC_IMMEDIATE   0xE9
-
-#define MOS6502_ASL_ACCUMULATOR 0x0A
-#define MOS6502_LSR_ACCUMULATOR 0x4A
-#define MOS6502_ROL_ACCUMULATOR 0x2A
-#define MOS6502_ROR_ACCUMULATOR 0x6A
-
-#define MOS6502_ADC_ZEROPAGE    0x65
-#define MOS6502_AND_ZEROPAGE    0x25
-#define MOS6502_ASL_ZEROPAGE    0x06
-#define MOS6502_BIT_ZEROPAGE    0x24
-#define MOS6502_CMP_ZEROPAGE    0xC5
-#define MOS6502_CPX_ZEROPAGE    0xE4
-#define MOS6502_CPY_ZEROPAGE    0xC4
-#define MOS6502_EOR_ZEROPAGE    0x45
-#define MOS6502_LDA_ZEROPAGE    0xA5
-#define MOS6502_LDX_ZEROPAGE    0xA6
-#define MOS6502_LDY_ZEROPAGE    0xA4
-#define MOS6502_ORA_ZEROPAGE    0x05
-#define MOS6502_SBC_ZEROPAGE    0xE5
-#define MOS6502_STA_ZEROPAGE    0x85
-#define MOS6502_STX_ZEROPAGE    0x86
-#define MOS6502_STY_ZEROPAGE    0x84
-#define MOS6502_DEC_ZEROPAGE    0xC6
-#define MOS6502_INC_ZEROPAGE    0xE6
-#define MOS6502_LSR_ZEROPAGE    0x46
-#define MOS6502_ROL_ZEROPAGE    0x26
-#define MOS6502_ROR_ZEROPAGE    0x66
-
-#define MOS6502_ADC_ZEROPAGEX   0x75
-#define MOS6502_AND_ZEROPAGEX   0x35
-#define MOS6502_CMP_ZEROPAGEX   0xD5
-#define MOS6502_EOR_ZEROPAGEX   0x55
-#define MOS6502_LDA_ZEROPAGEX   0xB5
-#define MOS6502_LDY_ZEROPAGEX   0xB4
-#define MOS6502_ORA_ZEROPAGEX   0x15
-#define MOS6502_SBC_ZEROPAGEX   0xF5
-#define MOS6502_STA_ZEROPAGEX   0x95
-#define MOS6502_STY_ZEROPAGEX   0x94
-#define MOS6502_ASL_ZEROPAGEX   0x16
-#define MOS6502_DEC_ZEROPAGEX   0xD6
-#define MOS6502_INC_ZEROPAGEX   0xF6
-#define MOS6502_LSR_ZEROPAGEX   0x56
-#define MOS6502_ROL_ZEROPAGEX   0x36
-#define MOS6502_ROR_ZEROPAGEX   0x76
-
-#define MOS6502_LDX_ZEROPAGEY   0xB6
-#define MOS6502_STX_ZEROPAGEY   0x96
-
-#define MOS6502_ADC_ABSOLUTE    0x6D
-#define MOS6502_AND_ABSOLUTE    0x2D
-#define MOS6502_BIT_ABSOLUTE    0x2C
-#define MOS6502_CMP_ABSOLUTE    0xCD
-#define MOS6502_CPX_ABSOLUTE    0xEC
-#define MOS6502_CPY_ABSOLUTE    0xCC
-#define MOS6502_EOR_ABSOLUTE    0x4D
-#define MOS6502_JMP_ABSOLUTE    0x4C
-#define MOS6502_LDA_ABSOLUTE    0xAD
-#define MOS6502_LDX_ABSOLUTE    0xAE
-#define MOS6502_LDY_ABSOLUTE    0xAC
-#define MOS6502_ORA_ABSOLUTE    0x0D
-#define MOS6502_SBC_ABSOLUTE    0xED
-#define MOS6502_STA_ABSOLUTE    0x8D
-#define MOS6502_STX_ABSOLUTE    0x8E
-#define MOS6502_STY_ABSOLUTE    0x8C
-#define MOS6502_ASL_ABSOLUTE    0x0E
-#define MOS6502_DEC_ABSOLUTE    0xCE
-#define MOS6502_INC_ABSOLUTE    0xEE
-#define MOS6502_LSR_ABSOLUTE    0x4E
-#define MOS6502_ROL_ABSOLUTE    0x2E
-#define MOS6502_ROR_ABSOLUTE    0x6E
-#define MOS6502_JSR_ABSOLUTE    0x20
-
-#define MOS6502_ADC_ABSOLUTEX   0x7D
-#define MOS6502_AND_ABSOLUTEX   0x3D
-#define MOS6502_CMP_ABSOLUTEX   0xDD
-#define MOS6502_EOR_ABSOLUTEX   0x5D
-#define MOS6502_LDA_ABSOLUTEX   0xBD
-#define MOS6502_LDY_ABSOLUTEX   0xBC
-#define MOS6502_ORA_ABSOLUTEX   0x1D
-#define MOS6502_SBC_ABSOLUTEX   0xFD
-#define MOS6502_STA_ABSOLUTEX   0x9D
-#define MOS6502_ASL_ABSOLUTEX   0x1E
-#define MOS6502_DEC_ABSOLUTEX   0xDE
-#define MOS6502_INC_ABSOLUTEX   0xFE
-#define MOS6502_LSR_ABSOLUTEX   0x5E
-#define MOS6502_ROL_ABSOLUTEX   0x3E
-#define MOS6502_ROR_ABSOLUTEX   0x7E
-
-#define MOS6502_ADC_ABSOLUTEY   0x79
-#define MOS6502_AND_ABSOLUTEY   0x39
-#define MOS6502_CMP_ABSOLUTEY   0xD9
-#define MOS6502_EOR_ABSOLUTEY   0x59
-#define MOS6502_LDA_ABSOLUTEY   0xB9
-#define MOS6502_LDX_ABSOLUTEY   0xBE
-#define MOS6502_ORA_ABSOLUTEY   0x19
-#define MOS6502_SBC_ABSOLUTEY   0xF9
-#define MOS6502_STA_ABSOLUTEY   0x99
-
-#define MOS6502_BCC_RELATIVE    0x90
-#define MOS6502_BCS_RELATIVE    0xB0
-#define MOS6502_BEQ_RELATIVE    0xF0
-#define MOS6502_BMI_RELATIVE    0x30
-#define MOS6502_BNE_RELATIVE    0xD0
-#define MOS6502_BPL_RELATIVE    0x10
-#define MOS6502_BVC_RELATIVE    0x50
-#define MOS6502_BVS_RELATIVE    0x70
-#define MOS6502_JMP_INDIRECT    0x6C
-
-#define MOS6502_ADC_INDIRECTX   0x61
-#define MOS6502_AND_INDIRECTX   0x21
-#define MOS6502_CMP_INDIRECTX   0xC1
-#define MOS6502_EOR_INDIRECTX   0x41
-#define MOS6502_LDA_INDIRECTX   0xA1
-#define MOS6502_ORA_INDIRECTX   0x01
-#define MOS6502_SBC_INDIRECTX   0xE1
-#define MOS6502_STA_INDIRECTX   0x81
-
-#define MOS6502_AND_INDIRECTY   0x31
-#define MOS6502_ADC_INDIRECTY   0x71
-#define MOS6502_CMP_INDIRECTY   0xD1
-#define MOS6502_EOR_INDIRECTY   0x51
-#define MOS6502_LDA_INDIRECTY   0xB1
-#define MOS6502_ORA_INDIRECTY   0x11
-#define MOS6502_SBC_INDIRECTY   0xF1
-#define MOS6502_STA_INDIRECTY   0x91
-
-#define MOS6502_BRK_IMPLIED     0x00
-#define MOS6502_CLC_IMPLIED     0x18
-#define MOS6502_CLD_IMPLIED     0xD8
-#define MOS6502_CLI_IMPLIED     0x58
-#define MOS6502_CLV_IMPLIED     0xB8
-#define MOS6502_DEX_IMPLIED     0xCA
-#define MOS6502_DEY_IMPLIED     0x88
-#define MOS6502_INX_IMPLIED     0xE8
-#define MOS6502_INY_IMPLIED     0xC8
-#define MOS6502_NOP_IMPLIED     0xEA
-#define MOS6502_SEC_IMPLIED     0x38
-#define MOS6502_SED_IMPLIED     0xF8
-#define MOS6502_SEI_IMPLIED     0x78
-#define MOS6502_TAX_IMPLIED     0xAA
-#define MOS6502_TAY_IMPLIED     0xA8
-#define MOS6502_TSX_IMPLIED     0xBA
-#define MOS6502_TXA_IMPLIED     0x8A
-#define MOS6502_TXS_IMPLIED     0x9A
-#define MOS6502_TYA_IMPLIED     0x98
-#define MOS6502_PHA_IMPLIED     0x48
-#define MOS6502_PHP_IMPLIED     0x08
-#define MOS6502_PLA_IMPLIED     0x68
-#define MOS6502_PLP_IMPLIED     0x28
-#define MOS6502_RTI_IMPLIED     0x40
-#define MOS6502_RTS_IMPLIED     0x60
 
 namespace MOS6502 {
 
 CPU::CPU()
 {
-  RST();
+  // RST();
 }
 
 CPU::~CPU()
@@ -240,25 +73,25 @@ void CPU::Step(void)
   case MOS6502_ROL_ZEROPAGE:  a = ZEROPAGE();   ROL(a); break;
   case MOS6502_ROR_ZEROPAGE:  a = ZEROPAGE();   ROR(a); break;
   /* Zeropage X */
-  case MOS6502_ADC_ZEROPAGEX: a = ZEROPAGE_X(); ADC(a); break;
-  case MOS6502_AND_ZEROPAGEX: a = ZEROPAGE_X(); AND(a); break;
-  case MOS6502_CMP_ZEROPAGEX: a = ZEROPAGE_X(); CMP(a); break;
-  case MOS6502_EOR_ZEROPAGEX: a = ZEROPAGE_X(); EOR(a); break;
-  case MOS6502_LDA_ZEROPAGEX: a = ZEROPAGE_X(); LDA(a); break;
-  case MOS6502_LDY_ZEROPAGEX: a = ZEROPAGE_X(); LDY(a); break;
-  case MOS6502_ORA_ZEROPAGEX: a = ZEROPAGE_X(); ORA(a); break;
-  case MOS6502_SBC_ZEROPAGEX: a = ZEROPAGE_X(); SBC(a); break;
-  case MOS6502_STA_ZEROPAGEX: a = ZEROPAGE_X(); STA(a); break;
-  case MOS6502_STY_ZEROPAGEX: a = ZEROPAGE_X(); STY(a); break;
-  case MOS6502_ASL_ZEROPAGEX: a = ZEROPAGE_X(); ASL(a); break;
-  case MOS6502_DEC_ZEROPAGEX: a = ZEROPAGE_X(); DEC(a); break;
-  case MOS6502_INC_ZEROPAGEX: a = ZEROPAGE_X(); INC(a); break;
-  case MOS6502_LSR_ZEROPAGEX: a = ZEROPAGE_X(); LSR(a); break;
-  case MOS6502_ROL_ZEROPAGEX: a = ZEROPAGE_X(); ROL(a); break;
-  case MOS6502_ROR_ZEROPAGEX: a = ZEROPAGE_X(); ROR(a); break;
+  case MOS6502_ADC_ZEROPAGE_X: a = ZEROPAGE_X(); ADC(a); break;
+  case MOS6502_AND_ZEROPAGE_X: a = ZEROPAGE_X(); AND(a); break;
+  case MOS6502_CMP_ZEROPAGE_X: a = ZEROPAGE_X(); CMP(a); break;
+  case MOS6502_EOR_ZEROPAGE_X: a = ZEROPAGE_X(); EOR(a); break;
+  case MOS6502_LDA_ZEROPAGE_X: a = ZEROPAGE_X(); LDA(a); break;
+  case MOS6502_LDY_ZEROPAGE_X: a = ZEROPAGE_X(); LDY(a); break;
+  case MOS6502_ORA_ZEROPAGE_X: a = ZEROPAGE_X(); ORA(a); break;
+  case MOS6502_SBC_ZEROPAGE_X: a = ZEROPAGE_X(); SBC(a); break;
+  case MOS6502_STA_ZEROPAGE_X: a = ZEROPAGE_X(); STA(a); break;
+  case MOS6502_STY_ZEROPAGE_X: a = ZEROPAGE_X(); STY(a); break;
+  case MOS6502_ASL_ZEROPAGE_X: a = ZEROPAGE_X(); ASL(a); break;
+  case MOS6502_DEC_ZEROPAGE_X: a = ZEROPAGE_X(); DEC(a); break;
+  case MOS6502_INC_ZEROPAGE_X: a = ZEROPAGE_X(); INC(a); break;
+  case MOS6502_LSR_ZEROPAGE_X: a = ZEROPAGE_X(); LSR(a); break;
+  case MOS6502_ROL_ZEROPAGE_X: a = ZEROPAGE_X(); ROL(a); break;
+  case MOS6502_ROR_ZEROPAGE_X: a = ZEROPAGE_X(); ROR(a); break;
   /* Zeropage Y */
-  case MOS6502_LDX_ZEROPAGEY: a = ZEROPAGE_Y(); LDX(a); break;
-  case MOS6502_STX_ZEROPAGEY: a = ZEROPAGE_Y(); STX(a); break;
+  case MOS6502_LDX_ZEROPAGE_Y: a = ZEROPAGE_Y(); LDX(a); break;
+  case MOS6502_STX_ZEROPAGE_Y: a = ZEROPAGE_Y(); STX(a); break;
   /* Absolute */
   case MOS6502_ADC_ABSOLUTE:  a = ABSOLUTE();   ADC(a); break;
   case MOS6502_AND_ABSOLUTE:  a = ABSOLUTE();   AND(a); break;
@@ -284,60 +117,60 @@ void CPU::Step(void)
   case MOS6502_ROR_ABSOLUTE:  a = ABSOLUTE();   ROR(a); break;
   case MOS6502_JSR_ABSOLUTE:  a = ABSOLUTE();   JSR(a); break;
   /* Absolute X */
-  case MOS6502_ADC_ABSOLUTEX: a = ABSOLUTE_X(); ADC(a); break;
-  case MOS6502_AND_ABSOLUTEX: a = ABSOLUTE_X(); AND(a); break;
-  case MOS6502_CMP_ABSOLUTEX: a = ABSOLUTE_X(); CMP(a); break;
-  case MOS6502_EOR_ABSOLUTEX: a = ABSOLUTE_X(); EOR(a); break;
-  case MOS6502_LDA_ABSOLUTEX: a = ABSOLUTE_X(); LDA(a); break;
-  case MOS6502_LDY_ABSOLUTEX: a = ABSOLUTE_X(); LDY(a); break;
-  case MOS6502_ORA_ABSOLUTEX: a = ABSOLUTE_X(); ORA(a); break;
-  case MOS6502_SBC_ABSOLUTEX: a = ABSOLUTE_X(); SBC(a); break;
-  case MOS6502_STA_ABSOLUTEX: a = ABSOLUTE_X(); STA(a); break;
-  case MOS6502_ASL_ABSOLUTEX: a = ABSOLUTE_X(); ASL(a); break;
-  case MOS6502_DEC_ABSOLUTEX: a = ABSOLUTE_X(); DEC(a); break;
-  case MOS6502_INC_ABSOLUTEX: a = ABSOLUTE_X(); INC(a); break;
-  case MOS6502_LSR_ABSOLUTEX: a = ABSOLUTE_X(); LSR(a); break;
-  case MOS6502_ROL_ABSOLUTEX: a = ABSOLUTE_X(); ROL(a); break;
-  case MOS6502_ROR_ABSOLUTEX: a = ABSOLUTE_X(); ROR(a); break;
+  case MOS6502_ADC_ABSOLUTE_X: a = ABSOLUTE_X(); ADC(a); break;
+  case MOS6502_AND_ABSOLUTE_X: a = ABSOLUTE_X(); AND(a); break;
+  case MOS6502_CMP_ABSOLUTE_X: a = ABSOLUTE_X(); CMP(a); break;
+  case MOS6502_EOR_ABSOLUTE_X: a = ABSOLUTE_X(); EOR(a); break;
+  case MOS6502_LDA_ABSOLUTE_X: a = ABSOLUTE_X(); LDA(a); break;
+  case MOS6502_LDY_ABSOLUTE_X: a = ABSOLUTE_X(); LDY(a); break;
+  case MOS6502_ORA_ABSOLUTE_X: a = ABSOLUTE_X(); ORA(a); break;
+  case MOS6502_SBC_ABSOLUTE_X: a = ABSOLUTE_X(); SBC(a); break;
+  case MOS6502_STA_ABSOLUTE_X: a = ABSOLUTE_X(); STA(a); break;
+  case MOS6502_ASL_ABSOLUTE_X: a = ABSOLUTE_X(); ASL(a); break;
+  case MOS6502_DEC_ABSOLUTE_X: a = ABSOLUTE_X(); DEC(a); break;
+  case MOS6502_INC_ABSOLUTE_X: a = ABSOLUTE_X(); INC(a); break;
+  case MOS6502_LSR_ABSOLUTE_X: a = ABSOLUTE_X(); LSR(a); break;
+  case MOS6502_ROL_ABSOLUTE_X: a = ABSOLUTE_X(); ROL(a); break;
+  case MOS6502_ROR_ABSOLUTE_X: a = ABSOLUTE_X(); ROR(a); break;
   /* Absolute Y */
-  case MOS6502_ADC_ABSOLUTEY: a = ABSOLUTE_Y(); ADC(a); break;
-  case MOS6502_AND_ABSOLUTEY: a = ABSOLUTE_Y(); AND(a); break;
-  case MOS6502_CMP_ABSOLUTEY: a = ABSOLUTE_Y(); CMP(a); break;
-  case MOS6502_EOR_ABSOLUTEY: a = ABSOLUTE_Y(); EOR(a); break;
-  case MOS6502_LDA_ABSOLUTEY: a = ABSOLUTE_Y(); LDA(a); break;
-  case MOS6502_LDX_ABSOLUTEY: a = ABSOLUTE_Y(); LDX(a); break;
-  case MOS6502_ORA_ABSOLUTEY: a = ABSOLUTE_Y(); ORA(a); break;
-  case MOS6502_SBC_ABSOLUTEY: a = ABSOLUTE_Y(); SBC(a); break;
-  case MOS6502_STA_ABSOLUTEY: a = ABSOLUTE_Y(); STA(a); break;
+  case MOS6502_ADC_ABSOLUTE_Y: a = ABSOLUTE_Y(); ADC(a); break;
+  case MOS6502_AND_ABSOLUTE_Y: a = ABSOLUTE_Y(); AND(a); break;
+  case MOS6502_CMP_ABSOLUTE_Y: a = ABSOLUTE_Y(); CMP(a); break;
+  case MOS6502_EOR_ABSOLUTE_Y: a = ABSOLUTE_Y(); EOR(a); break;
+  case MOS6502_LDA_ABSOLUTE_Y: a = ABSOLUTE_Y(); LDA(a); break;
+  case MOS6502_LDX_ABSOLUTE_Y: a = ABSOLUTE_Y(); LDX(a); break;
+  case MOS6502_ORA_ABSOLUTE_Y: a = ABSOLUTE_Y(); ORA(a); break;
+  case MOS6502_SBC_ABSOLUTE_Y: a = ABSOLUTE_Y(); SBC(a); break;
+  case MOS6502_STA_ABSOLUTE_Y: a = ABSOLUTE_Y(); STA(a); break;
   /* Relative (Branching Instrutions) */
-  case MOS6502_BCC_RELATIVE: BCC(); break;
-  case MOS6502_BCS_RELATIVE: BCS(); break;
-  case MOS6502_BEQ_RELATIVE: BEQ(); break;
-  case MOS6502_BMI_RELATIVE: BMI(); break;
-  case MOS6502_BNE_RELATIVE: BNE(); break;
-  case MOS6502_BPL_RELATIVE: BPL(); break;
-  case MOS6502_BVC_RELATIVE: BVC(); break;
-  case MOS6502_BVS_RELATIVE: BVS(); break;
+  case MOS6502_BCC_RELATIVE: a = RELATIVE(); BCC(a); break;
+  case MOS6502_BCS_RELATIVE: a = RELATIVE(); BCS(a); break;
+  case MOS6502_BEQ_RELATIVE: a = RELATIVE(); BEQ(a); break;
+  case MOS6502_BMI_RELATIVE: a = RELATIVE(); BMI(a); break;
+  case MOS6502_BNE_RELATIVE: a = RELATIVE(); BNE(a); break;
+  case MOS6502_BPL_RELATIVE: a = RELATIVE(); BPL(a); break;
+  case MOS6502_BVC_RELATIVE: a = RELATIVE(); BVC(a); break;
+  case MOS6502_BVS_RELATIVE: a = RELATIVE(); BVS(a); break;
   /* Indirect */
   case MOS6502_JMP_INDIRECT: a = INDIRECT(); JMP(a); break;
   /* Indirect X */
-  case MOS6502_ADC_INDIRECTX: a = INDIRECT_X(); ADC(a); break;
-  case MOS6502_AND_INDIRECTX: a = INDIRECT_X(); AND(a); break;
-  case MOS6502_CMP_INDIRECTX: a = INDIRECT_X(); CMP(a); break;
-  case MOS6502_EOR_INDIRECTX: a = INDIRECT_X(); EOR(a); break;
-  case MOS6502_LDA_INDIRECTX: a = INDIRECT_X(); LDA(a); break;
-  case MOS6502_ORA_INDIRECTX: a = INDIRECT_X(); ORA(a); break;
-  case MOS6502_SBC_INDIRECTX: a = INDIRECT_X(); SBC(a); break;
-  case MOS6502_STA_INDIRECTX: a = INDIRECT_X(); STA(a); break;
+  case MOS6502_ADC_INDIRECT_X: a = INDIRECT_X(); ADC(a); break;
+  case MOS6502_AND_INDIRECT_X: a = INDIRECT_X(); AND(a); break;
+  case MOS6502_CMP_INDIRECT_X: a = INDIRECT_X(); CMP(a); break;
+  case MOS6502_EOR_INDIRECT_X: a = INDIRECT_X(); EOR(a); break;
+  case MOS6502_LDA_INDIRECT_X: a = INDIRECT_X(); LDA(a); break;
+  case MOS6502_ORA_INDIRECT_X: a = INDIRECT_X(); ORA(a); break;
+  case MOS6502_SBC_INDIRECT_X: a = INDIRECT_X(); SBC(a); break;
+  case MOS6502_STA_INDIRECT_X: a = INDIRECT_X(); STA(a); break;
   /* Inirect Y */
-  case MOS6502_AND_INDIRECTY: a = INDIRECT_Y(); AND(a); break;
-  case MOS6502_ADC_INDIRECTY: a = INDIRECT_Y(); ADC(a); break;
-  case MOS6502_CMP_INDIRECTY: a = INDIRECT_Y(); CMP(a); break;
-  case MOS6502_EOR_INDIRECTY: a = INDIRECT_Y(); EOR(a); break;
-  case MOS6502_LDA_INDIRECTY: a = INDIRECT_Y(); LDA(a); break;
-  case MOS6502_ORA_INDIRECTY: a = INDIRECT_Y(); ORA(a); break;
-  case MOS6502_SBC_INDIRECTY: a = INDIRECT_Y(); SBC(a); break;
-  case MOS6502_STA_INDIRECTY: a = INDIRECT_Y(); STA(a); break;
+  case MOS6502_AND_INDIRECT_Y: a = INDIRECT_Y(); AND(a); break;
+  case MOS6502_ADC_INDIRECT_Y: a = INDIRECT_Y(); ADC(a); break;
+  case MOS6502_CMP_INDIRECT_Y: a = INDIRECT_Y(); CMP(a); break;
+  case MOS6502_EOR_INDIRECT_Y: a = INDIRECT_Y(); EOR(a); break;
+  case MOS6502_LDA_INDIRECT_Y: a = INDIRECT_Y(); LDA(a); break;
+  case MOS6502_ORA_INDIRECT_Y: a = INDIRECT_Y(); ORA(a); break;
+  case MOS6502_SBC_INDIRECT_Y: a = INDIRECT_Y(); SBC(a); break;
+  case MOS6502_STA_INDIRECT_Y: a = INDIRECT_Y(); STA(a); break;
   /* Accumulator */
   case MOS6502_ASL_ACCUMULATOR: ASL_A(); break;
   case MOS6502_LSR_ACCUMULATOR: LSR_A(); break;
@@ -531,24 +364,24 @@ inline void CPU::ASL_A() {
   m_register.A    =  m_register.A << 0x01;
   m_register.PS.Z = !m_register.A;
   m_register.PS.N =  m_register.A >> 0x07;
+  Tick();
 }
 
-inline void CPU::BCC()
+inline void CPU::BCC(uint16_t address)
 {
-  uint16_t r = RELATIVE();
   if( !m_register.PS.C )
   {
     /* Additional Cycle on taken branch */
     Tick();
-    /* Additional Cycle on page boundry cros*/
-    if((r ^ m_register.PC ) & 0xFF00)
+    /* Additional Cycle on page boundary cross*/
+    if((address ^ m_register.PC) & 0xFF00)
       Tick();
 
-    m_register.PC = r;
+    m_register.PC = address;
   }
 }
 
-inline void CPU::BCS()
+inline void CPU::BCS(uint16_t address)
 {
   uint16_t r = RELATIVE();
   if( m_register.PS.C )
@@ -563,14 +396,14 @@ inline void CPU::BCS()
   }
 }
 
-inline void CPU::BEQ()
+inline void CPU::BEQ(uint16_t address)
 {
   uint16_t r = RELATIVE();
   if( m_register.PS.Z )
   {
     /* Additional Cycle on taken branch */
     Tick();
-    /* Additional Cycle on page boundry cros*/
+    /* Additional Cycle on page boundary cross*/
     if((r ^ m_register.PC ) & 0xFF00)
       Tick();
 
@@ -586,48 +419,45 @@ inline void CPU::BIT(uint16_t address)
   m_register.PS.Z = !(m  & m_register.A);
 }
 
-inline void CPU::BMI()
+inline void CPU::BMI(uint16_t address)
 {
-  uint16_t r = RELATIVE();
   if( m_register.PS.N )
   {
     /* Additional Cycle on taken branch */
     Tick();
-    /* Additional Cycle on page boundry cros*/
-    if((r ^ m_register.PC ) & 0xFF00)
+    /* Additional Cycle on page boundary cross*/
+    if((address ^ m_register.PC) & 0xFF00)
       Tick();
 
-    m_register.PC = r;
+    m_register.PC = address;
   }
 }
 
-inline void CPU::BNE()
+inline void CPU::BNE(uint16_t address)
 {
-  uint16_t r = RELATIVE();
   if( !m_register.PS.Z )
   {
     /* Additional Cycle on taken branch */
     Tick();
-    /* Additional Cycle on page boundry cros*/
-    if((r ^ m_register.PC ) & 0xFF00)
+    /* Additional Cycle on page boundary cross*/
+    if((address ^ m_register.PC) & 0xFF00)
       Tick();
 
-    m_register.PC = r;
+    m_register.PC = address;
   }
 }
 
-inline void CPU::BPL()
+inline void CPU::BPL(uint16_t address)
 {
-  uint16_t r = RELATIVE();
   if( !m_register.PS.N )
   {
     /* Additional Cycle on taken branch */
     Tick();
-    /* Additional Cycle on page boundry cros*/
-    if((r ^ m_register.PC ) & 0xFF00)
+    /* Additional Cycle on page boundary cross*/
+    if((address ^ m_register.PC) & 0xFF00)
       Tick();
 
-    m_register.PC = r;
+    m_register.PC = address;
   }
 }
 
@@ -642,33 +472,31 @@ inline void CPU::BRK()
   m_register.PC   = Read( IRQ_ADDRESS );
 }
 
-inline void CPU::BVC()
+inline void CPU::BVC(uint16_t address)
 {
-  uint16_t r = RELATIVE();
   if( !m_register.PS.V )
   {
     /* Additional Cycle on taken branch */
     Tick();
-    /* Additional Cycle on page boundry cros*/
-    if((r ^ m_register.PC ) & 0xFF00)
+    /* Additional Cycle on page boundary cross*/
+    if((address ^ m_register.PC) & 0xFF00)
       Tick();
 
-    m_register.PC = r;
+    m_register.PC = address;
   }
 }
 
-inline void CPU::BVS()
+inline void CPU::BVS(uint16_t address)
 {
-  uint16_t r = RELATIVE();
   if( m_register.PS.V )
   {
     /* Additional Cycle on taken branch */
     Tick();
-    /* Additional Cycle on page boundry cros*/
-    if((r ^ m_register.PC ) & 0xFF00)
+    /* Additional Cycle on page boundary cross*/
+    if((address ^ m_register.PC) & 0xFF00)
       Tick();
 
-    m_register.PC = r;
+    m_register.PC = address;
   }
 }
 
@@ -997,5 +825,53 @@ inline void CPU::TYA()
   m_register.PS.N =  m_register.A >> 0x07;
   m_register.PS.Z = !m_register.A;
 }
+
+#ifdef MOS6502_UNIT_TEST
+TestCPU::TestCPU() {
+  m_ticks  = 0;
+  std::memset(m_memory, 0, 1 << 16);
+}
+TestCPU::~TestCPU() { }
+
+REG & TestCPU::Register() {
+  return m_register;
+}
+
+void     TestCPU::Reset() {
+  RST();
+}
+
+void     TestCPU::SetBootAddress(uint16_t address) {
+  m_memory[RST_ADDRESS+1] = (address >> 8) & 0xFF;
+  m_memory[RST_ADDRESS  ] = (address)      & 0xFF;
+}
+
+uint8_t  TestCPU::Read (uint16_t address) {
+  Tick();
+  return m_memory[address];
+}
+void     TestCPU::Write(uint16_t address, uint8_t v) {
+  Tick();
+  m_memory[address] = v;
+}
+void     TestCPU::Tick () {
+  m_ticks++;
+}
+
+/* Non Invasive Read, regular read triggers a tick */
+uint8_t  TestCPU::NI_Read (uint16_t address) {
+  return m_memory[address];
+}
+/* Non Invasive Write, regular write triggers a tick */
+void     TestCPU::NI_Write(uint16_t address, uint8_t v) {
+  m_memory[address] = v;
+}
+uint64_t TestCPU::GetTicks() {
+  return m_ticks;
+}
+void     TestCPU::SetTicks(uint64_t ticks){
+  m_ticks = ticks;
+}
+#endif
 
 } /* namespace MOS6502 */

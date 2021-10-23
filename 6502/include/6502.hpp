@@ -2,6 +2,8 @@
 #define MOS6502_HPP__
 
 #include <stdint.h>
+#include <gtest/gtest.h>
+#include <gtest/gtest_prod.h>
 
 #define MOS6502_DEFINE_INSTRUCTION_IMPLIED( instruction_name ) \
   inline void #instruction_name ();
@@ -62,23 +64,23 @@ INT;
   6502 Bus interface
   =====================================================================
   * Purposely undefined to enforce this the function implementation */
-class ICPUBus {
+class ICPUDataBus {
 public:
-  virtual uint8_t Read (uint16_t addr);
-  virtual void    Write(uint16_t addr, uint8_t v);
-  virtual void    Tick ();
+  virtual uint8_t Read (uint16_t addr)            = 0;
+  virtual void    Write(uint16_t addr, uint8_t v) = 0;
+  virtual void    Tick ()                         = 0;
 };
 
 /*=====================================================================
   6502 CPU State Class
   =====================================================================*/
-class CPU : public virtual ICPUBus
+class CPU : public ICPUDataBus
 {
   REG m_register;
   INT m_interrupt;
 public:
   CPU();
-  ~CPU();
+  virtual ~CPU();
   /* Execute single instruction */
   void Step(void);
   /* External interrupt triggers */
@@ -107,16 +109,16 @@ private:
   inline void AND(uint16_t address);
   inline void ASL(uint16_t address);
   inline void ASL_A();
-  inline void BCC();
-  inline void BCS();
-  inline void BEQ();
+  inline void BCC(uint16_t address);
+  inline void BCS(uint16_t address);
+  inline void BEQ(uint16_t address);
   inline void BIT(uint16_t address);
-  inline void BMI();
-  inline void BNE();
-  inline void BPL();
+  inline void BMI(uint16_t address);
+  inline void BNE(uint16_t address);
+  inline void BPL(uint16_t address);
   inline void BRK();
-  inline void BVC();
-  inline void BVS();
+  inline void BVC(uint16_t address);
+  inline void BVS(uint16_t address);
   inline void CLC();
   inline void CLD();
   inline void CLI();
@@ -163,8 +165,41 @@ private:
   inline void TXA();
   inline void TXS();
   inline void TYA();
+
+#ifdef MOS6502_UNIT_TEST
+  friend class TestCPU;
+#endif
 };
 
+/* CPU Used for testing */
+#ifdef MOS6502_UNIT_TEST
+class TestCPU : public CPU {
+  uint8_t  m_memory[1 << 16];
+  uint64_t m_ticks;
+public:
+  TestCPU();
+  virtual ~TestCPU();
+
+  /* Get the CPU register by reference */
+  REG & Register();
+
+  /* Virtual overrides */
+  uint8_t Read (uint16_t address);
+  void    Write(uint16_t address, uint8_t v);
+  void    Tick ();
+
+  /* Helper test functions */
+  void    Reset();
+  void    SetBootAddress(uint16_t address);
+  void    GetBootAddress(uint16_t address);
+  /* Non Invasive Read, regular read can trigger a tick in some systems */
+  uint8_t  NI_Read (uint16_t address);
+  void     NI_Write(uint16_t address, uint8_t v); 
+  /* Get the elapsed amount of ticks */
+  uint64_t GetTicks();
+  void     SetTicks(uint64_t ticks);
+};
+#endif
 } /* namespace MOS6502 */
 
 #endif /* MOS6502_HPP__ */

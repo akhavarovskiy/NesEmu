@@ -1,45 +1,57 @@
 #include <gtest/gtest.h>
-#include <gtest/gtest-typed-test.h>
+#include <gtest/gtest_prod.h>
 #include <iostream>
 #include <6502.hpp>
 #include <cstring>
 
-class CPUTest : public virtual MOS6502::CPU
-{
-public:
-    CPUTest() : MOS6502::CPU() {
-        m_ticks  = 0;
-        std::memset(m_memory, 0, 1 << 16);
-    }
-    ~CPUTest() {
+using namespace MOS6502;
 
-    }
-    uint8_t Read (uint16_t addr) override { 
-        return m_memory[ addr ];
-    }
-    void    Write(uint16_t addr, uint8_t v) override {
-        m_memory[ addr ] = v;
-    }
-    void    Tick () override {
-        m_ticks++;
-    }
+TEST(ASL, ACCUMULATOR) {
+    TestCPU t;
+    t.SetBootAddress(0x100);
+    t.NI_Write(0x100, 0x0A);          /* Set the instruction at boot address */
+    t.Reset();                        /* Reset the CPU */
 
-    inline uint32_t & GetTicks() {
-        return m_ticks;
-    }
-
-    inline uint8_t*   GetMemory() {
-        return m_memory;
-    }
-private:
-    uint32_t m_ticks;
-    uint8_t m_memory[1 << 16];
-};
-
-TEST(ADC, ACCUMULATOR) {
-    CPUTest t;
-    t.Step();
-    EXPECT_EQ(1, 1);
+    MOS6502::REG & r = t.Register();  /* Get the registers */
+    EXPECT_EQ(r.PC, 0x100);           /* Verify that the program counter is at 0x100 */
+    /*
+    ============================================
+        Sub Test 1
+    ============================================*/
+    t.SetTicks(0);
+    r.A = 0x01;                 /* Set accumulator argument */
+    t.Step();                   /* Run Single instruction */
+    EXPECT_EQ(r.A, 0x02);       /* Verify Accumulator */
+    EXPECT_EQ(r.PS.Z, 0);       /* Verify Flags */
+    EXPECT_EQ(r.PS.N, 0);
+    EXPECT_EQ(r.PS.C, 0);
+    EXPECT_EQ(t.GetTicks(), 2); /* Verify Cycle Count */
+    /*
+    ============================================
+        Sub Test 2
+    ============================================*/
+    t.Reset();                  /* Reset the CPU between sub tests */
+    t.SetTicks(0);
+    r.A = 0xFF;                 /* Set accumulator argument */
+    t.Step();                   /* Run Single instruction */
+    EXPECT_EQ(r.A, 0xFE);       /* Verify Accumulator */
+    EXPECT_EQ(r.PS.Z, 0);       /* Verify Flags */
+    EXPECT_EQ(r.PS.N, 1);
+    EXPECT_EQ(r.PS.C, 1);
+    EXPECT_EQ(t.GetTicks(), 2);  /* Verify Cycle Count */
+    /*
+    ============================================
+        Sub Test 3
+    ============================================*/
+    t.Reset();                  /* Reset the CPU between sub tests */
+    t.SetTicks(0);
+    r.A = 0x80;                 /* Set accumulator argument */
+    t.Step();                   /* Run Single instruction */
+    EXPECT_EQ(r.A, 0x00);       /* Verify Accumulator */
+    EXPECT_EQ(r.PS.Z, 1);       /* Verify Flags */
+    EXPECT_EQ(r.PS.N, 0);
+    EXPECT_EQ(r.PS.C, 1);
+    EXPECT_EQ(t.GetTicks(), 2); /* Verify Cycle Count */
 }
 
 int main(int argc, char* argv[])
