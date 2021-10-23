@@ -651,6 +651,7 @@ inline void CPU::LSR_A()
   m_register.PS.C =  m_register.A  & 0x01;
   m_register.A    =  m_register.A >> 0x01;
   m_register.PS.Z = !m_register.A;
+  Tick();
 }
 
 inline void CPU::NOP()
