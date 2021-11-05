@@ -6,7 +6,7 @@
 #include <gtest/gtest_prod.h>
 
 #define MOS6502_DEFINE_INSTRUCTION_IMPLIED( instruction_name ) \
-  inline void #instruction_name ();
+  inline void #instruction_name (void);
 
 #define MOS6502_DEFINE_INSTRUCTION_ADDRESSED( instruction_name ) \
   inline void #instruction_name (uint16_t address);

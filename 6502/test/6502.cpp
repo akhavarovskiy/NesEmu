@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
 #include <iostream>
+#define MOS6502_UNIT_TEST
 #include <6502.hpp>
 #include <6502def.hpp>
 #include <cstring>
@@ -11,7 +12,7 @@ TEST(ADC, IMMEDIATE)
 {
     TestCPU t;
     t.SetBootAddress(0x100);
-    t.NI_Write(0x100, MOS6502_ADC_IMMEDIATE); /* Set the instruction at boot address */
+    t.NI_Write(0x100, MOS6502_ADC_IMMEDIATE);   /* Set the instruction at boot address */
     t.Reset();                                  /* Reset the CPU */
     /* Verify boot address*/
     MOS6502::REG & r = t.Register();            /* Get the registers */
