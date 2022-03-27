@@ -1,7 +1,8 @@
 #ifndef MOS6502_HPP__
 #define MOS6502_HPP__
 
-#include <stdint.h>
+#include <cstdint>
+#include <memory>
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
 
@@ -11,15 +12,31 @@
 #define MOS6502_DEFINE_INSTRUCTION_ADDRESSED( instruction_name ) \
   inline void #instruction_name (uint16_t address);
 
-namespace MOS6502 {
-/*====================================================================
-  Constants
-  ====================================================================*/
-static const unsigned long k6502AddressSpace = (1 << 16);
+#define MOS6502_DEFINE_INSTRUCTION_ACCUMULATOR( instruction_name ) \
+  inline void instruction_name ## _A();
 
-/*====================================================================
-  Proccess status register, done via union as opposed to bitmasks
-  ====================================================================*/
+namespace MOS6502 {
+/************************************************************************
+ * Enums
+ ************************************************************************/
+enum INTERRUPT_STATE {
+  DISABLED = 0,
+  ENABLED  = 1
+};
+
+enum PIN_STATE {
+  LOW  = 0,
+  HIGH = 1
+};
+/************************************************************************
+ * Constants
+ ************************************************************************/
+static const unsigned long k6502AddressSpace = (1 << 16);
+static const unsigned long k6502StackSpace   = (1 << 12);
+
+/************************************************************************
+ * Proccess status register, done via union as opposed to bitmasks
+ ************************************************************************/
 typedef union {
   struct {
     unsigned C : 1; // Carry
@@ -35,9 +52,9 @@ typedef union {
 }
 PSR;
 
-/*=====================================================================
-  6502 System Registers
-  =====================================================================*/
+/************************************************************************
+ * 6502 System Registers
+ ************************************************************************/
 typedef struct {
   PSR      PS;  // Proccess status
   uint16_t PC;  // Program Counter
@@ -48,9 +65,9 @@ typedef struct {
 }
 REG;
 
-/*=====================================================================
-  6502 Interrupt Flags
-  =====================================================================*/
+/************************************************************************
+ * 6502 Interrupt Flags
+ ************************************************************************/
 typedef struct
 {
   bool IRQ_TRIGGER;
@@ -60,10 +77,30 @@ typedef struct
 }
 INT;
 
-/*=====================================================================
-  6502 Bus interface
-  =====================================================================
-  * Purposely undefined to enforce this the function implementation */
+/* Interface for handling external interrupts */
+class ICPUInterrupts {
+public:
+  virtual ~ICPUInterrupts() = default;
+  /* Get the interupt state */
+  virtual INTERRUPT_STATE RST() = 0; // External Reset Pin
+  virtual INTERRUPT_STATE NMI() = 0; // Used by PPU in NES (edge triggered)
+  virtual INTERRUPT_STATE IRQ() = 0; // Used by APU in NES
+
+  /* Will clear the interrupt flags and set the interrupt as handled */
+  virtual void clearRST() = 0;
+  virtual void clearNMI() = 0;
+  virtual void clearIRQ() = 0;
+
+  /* Set the external PIN for interrupt, IRQ is triggered on low, NMI is edge triggered. */
+  virtual void setPinRST(PIN_STATE ps) = 0;
+  virtual void setPinNMI(PIN_STATE ps) = 0;
+  virtual void setPinIRQ(PIN_STATE ps) = 0;
+};
+
+/************************************************************************
+ * 6502 Bus interface
+ ************************************************************************
+ * Purposely undefined to enforce this the function implementation */
 class ICPUDataBus {
 public:
   virtual uint8_t Read (uint16_t addr)            = 0;
@@ -71,18 +108,22 @@ public:
   virtual void    Tick ()                         = 0;
 };
 
-/*=====================================================================
-  6502 CPU State Class
-  =====================================================================*/
+/************************************************************************
+ * 6502 CPU State Class
+ ************************************************************************/
 class CPU : public ICPUDataBus
 {
+  std::shared_ptr<class ICPUInterrupts> m_interrupts;
   REG m_register;
-  INT m_interrupt;
 public:
-  CPU();
+  CPU(std::shared_ptr<class ICPUInterrupts> & interrupts);
   virtual ~CPU();
+  /* Get a copy of the current registers */
+  REG Registers();
   /* Execute single instruction */
   void Step(void);
+  /* Reset the CPU */
+  void Reset(void);
   /* External interrupt triggers */
   inline void TriggerIRQ();
   inline void TriggerNMI();
@@ -174,7 +215,8 @@ private:
 /* CPU Used for testing */
 #ifdef MOS6502_UNIT_TEST
 class TestCPU : public CPU {
-  uint8_t  m_memory[1 << 16];
+
+  uint8_t  m_memory[k6502AddressSpace];
   uint64_t m_ticks;
 public:
   TestCPU();
@@ -183,18 +225,31 @@ public:
   /* Get the CPU register by reference */
   REG & Register();
 
+  /* Addressing mode wrapper functions */
+  uint16_t IMMEDIATE();
+  uint16_t ZEROPAGE();
+  uint16_t ZEROPAGE_X();
+  uint16_t ZEROPAGE_Y();
+  uint16_t ABSOLUTE();
+  uint16_t ABSOLUTE_X();
+  uint16_t ABSOLUTE_Y();
+  uint16_t RELATIVE();
+  uint16_t INDIRECT();
+  uint16_t INDIRECT_X();
+  uint16_t INDIRECT_Y();
+  
   /* Virtual overrides */
-  uint8_t Read (uint16_t address);
-  void    Write(uint16_t address, uint8_t v);
-  void    Tick ();
+  uint8_t  Read (uint16_t address);
+  void     Write(uint16_t address, uint8_t v);
+  void     Tick ();
 
   /* Helper test functions */
-  void    Reset();
-  void    SetBootAddress(uint16_t address);
-  void    GetBootAddress(uint16_t address);
-  /* Non Invasive Read, regular read can trigger a tick in some systems */
-  uint8_t  NI_Read (uint16_t address);
-  void     NI_Write(uint16_t address, uint8_t v); 
+  void     Reset();
+  void     SetBootAddress(uint16_t address);
+  void     GetBootAddress(uint16_t address);
+  /* Non Invasive Read, regular read triggers a tick */
+  uint8_t  GetMemory(uint16_t address);
+  void     SetMemory(uint16_t address, uint8_t v); 
   /* Get the elapsed amount of ticks */
   uint64_t GetTicks();
   void     SetTicks(uint64_t ticks);

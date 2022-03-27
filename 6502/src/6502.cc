@@ -1,14 +1,13 @@
 #include "../include/6502.hpp"
 #include "../include/6502def.hpp"
 
-#include <cstring>
 #include <exception>
 
 namespace MOS6502 {
 
-CPU::CPU()
+CPU::CPU(std::shared_ptr<class ICPUInterrupts> & interrupts) : m_interrupts(interrupts)
 {
-  // RST();
+
 }
 
 CPU::~CPU()
@@ -16,23 +15,31 @@ CPU::~CPU()
 
 }
 
-inline void CPU::TriggerIRQ()
-{
-  m_interrupt.IRQ_TRIGGER = !m_interrupt.IRQ_TRIGGER;
-}
+REG CPU::Registers() 
+{ 
+  return this->m_register; 
+};
 
-inline void CPU::TriggerNMI()
+/* Reset the CPU */
+void CPU::Reset(void)
 {
-  m_interrupt.NMI_TRIGGER = !m_interrupt.NMI_TRIGGER;
-}
-
-inline void CPU::TriggerRST()
-{
-  m_interrupt.RST_TRIGGER = !m_interrupt.RST_TRIGGER;
+  this->RST();
 }
 
 void CPU::Step(void)
 {
+  if(this->m_interrupts->RST()) {
+    this->RST();
+    this->m_interrupts->clearRST();
+  }
+  if(this->m_interrupts->IRQ()) {
+    this->IRQ();
+    this->m_interrupts->clearIRQ();
+  }
+  if(this->m_interrupts->NMI()) {
+    this->NMI();
+    this->m_interrupts->clearNMI();
+  }
   /* Grab the instruction and increment the Program Counter */
   uint16_t a;
   uint8_t c = Read( m_register.PC++ );
@@ -240,13 +247,13 @@ inline void CPU::NMI()
 
 inline void CPU::IRQ()
 {
-  if( m_register.PS.I != 1 )
+  if( m_register.PS.I == 0 )
   {
     m_register.PS.B = 0;
     Write( m_register.SP-- | 0x100, m_register.PC >> 8 );
     Write( m_register.SP-- | 0x100, m_register.PC );
     Write( m_register.SP-- | 0x100, m_register.PS.m_data );
-    m_register.PS.I = 0;
+    m_register.PS.I = 1;
     m_register.PC   = Read(IRQ_ADDRESS) | (Read(IRQ_ADDRESS + 1) << 8);
 
     /* IRQ Takes 7 clock cycles */
@@ -267,12 +274,16 @@ inline uint16_t CPU::ZEROPAGE()
 
 inline uint16_t CPU::ZEROPAGE_X()
 {
-  return (Read(m_register.PC++) + m_register.X) & 0xFF;
+  uint16_t address = Read(m_register.PC++);
+  Tick();
+  return (address + m_register.X) & 0xFF;
 }
 
 inline uint16_t CPU::ZEROPAGE_Y()
 {
-  return (Read(m_register.PC++) + m_register.Y) & 0xFF;
+  uint16_t address = Read(m_register.PC++);
+  Tick();
+  return (address + m_register.Y) & 0xFF;
 }
 
 inline uint16_t CPU::ABSOLUTE()
@@ -317,14 +328,18 @@ inline uint16_t CPU::INDIRECT()
 
 inline uint16_t CPU::INDIRECT_X()
 {
-  uint16_t i = Read( m_register.PC++ ) + m_register.X;
-  return Read(i) | (Read( ++i ) << 8);
+  uint16_t i = (uint8_t)(Read(m_register.PC++) + m_register.X);
+  uint16_t l = Read(i);
+  uint16_t h = Read(++i) << 8;
+  return  h | l;
 }
 
 inline uint16_t CPU::INDIRECT_Y()
 {
   uint8_t  i = Read(m_register.PC++);
-  uint16_t m = Read(i) | (Read(++i) << 8);
+  uint16_t l = Read(i);
+  uint16_t h = Read(++i) << 8;
+  uint16_t m = h | l;
   uint16_t r = m + m_register.Y;
 
   if(( r ^ m ) & 0xFF00)
@@ -344,14 +359,14 @@ inline void CPU::ADC(uint16_t address) {
 }
 
 inline void CPU::AND(uint16_t address) {
-  uint8_t  m = Read( address );
+  uint8_t  m = Read(address);
   m_register.A    =  m_register.A  & m;
   m_register.PS.N =  m_register.A >> 0x07;
   m_register.PS.Z = !m_register.A;
 }
 
 inline void CPU::ASL(uint16_t address) {
-  uint8_t  m =  Read( address );
+  uint8_t  m =  Read(address);
   m_register.PS.C =  m >> 0x07;
   m               =  m << 0x01;
   m_register.PS.Z = !m;
@@ -830,16 +845,61 @@ inline void CPU::TYA()
 #ifdef MOS6502_UNIT_TEST
 TestCPU::TestCPU() {
   m_ticks  = 0;
-  std::memset(m_memory, 0, 1 << 16);
+  for(unsigned long i = 0; i < k6502AddressSpace; i++) 
+    m_memory[i] = 0;
 }
 TestCPU::~TestCPU() { }
 
-REG & TestCPU::Register() {
+REG &    TestCPU::Register() {
   return m_register;
 }
 
 void     TestCPU::Reset() {
   RST();
+}
+
+uint16_t TestCPU::IMMEDIATE() {
+  return CPU::IMMEDIATE();
+}
+
+uint16_t TestCPU::ZEROPAGE() {
+  return CPU::ZEROPAGE();
+}
+
+uint16_t TestCPU::ZEROPAGE_X() {
+  return CPU::ZEROPAGE_X();
+}
+
+uint16_t TestCPU::ZEROPAGE_Y() {
+  return CPU::ZEROPAGE_Y();
+}
+
+uint16_t TestCPU::ABSOLUTE() {
+  return CPU::ABSOLUTE();
+}
+
+uint16_t TestCPU::ABSOLUTE_X() {
+  return CPU::ABSOLUTE_X();
+}
+
+uint16_t TestCPU::ABSOLUTE_Y() {
+  return CPU::ABSOLUTE_Y();
+}
+
+uint16_t TestCPU::RELATIVE() {
+  return CPU::RELATIVE();
+}
+
+uint16_t TestCPU::INDIRECT() {
+  return CPU::INDIRECT();
+}
+
+uint16_t TestCPU::INDIRECT_X() {
+  return CPU::INDIRECT_X();
+}
+
+uint16_t TestCPU::INDIRECT_Y() {
+  return CPU::INDIRECT_Y();
 }
 
 void     TestCPU::SetBootAddress(uint16_t address) {
@@ -851,25 +911,28 @@ uint8_t  TestCPU::Read (uint16_t address) {
   Tick();
   return m_memory[address];
 }
+
 void     TestCPU::Write(uint16_t address, uint8_t v) {
   Tick();
   m_memory[address] = v;
 }
+
 void     TestCPU::Tick () {
   m_ticks++;
 }
 
-/* Non Invasive Read, regular read triggers a tick */
-uint8_t  TestCPU::NI_Read (uint16_t address) {
+uint8_t  TestCPU::GetMemory (uint16_t address) {
   return m_memory[address];
 }
-/* Non Invasive Write, regular write triggers a tick */
-void     TestCPU::NI_Write(uint16_t address, uint8_t v) {
+
+void     TestCPU::SetMemory(uint16_t address, uint8_t v) {
   m_memory[address] = v;
 }
+
 uint64_t TestCPU::GetTicks() {
   return m_ticks;
 }
+
 void     TestCPU::SetTicks(uint64_t ticks){
   m_ticks = ticks;
 }

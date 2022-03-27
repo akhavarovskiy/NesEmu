@@ -3,26 +3,26 @@ INCLUDE    = 6502/include
 LIB        = 6502/lib
 BUILD_NAME = NesEmu
 OBJECTS    = 
-FLAGS      = -std=c++11 -m64 -Ofast -g
+FLAGS      = -std=c++14 -m64 -Ofast -g
 
-$(BUILD_NAME): include/main.h src/main.c obj/rom.o obj/bus.o obj/map.o obj/ppu.o obj/jpd.o 
+$(BUILD_NAME): obj/ricoh2A0X.o obj/bus.o obj/interrupts.o obj/rom.o obj/mapper0.o 
 	make -C 6502
-	g++ src/main.c obj/rom.o obj/bus.o obj/map.o obj/ppu.o  obj/jpd.o  -I $(INCLUDE) -L $(LIB) -l6502 -lSDL2 -lpthread -o $(BUILD_NAME) $(FLAGS)
+	clang++ src/main.cc obj/ricoh2A0X.o obj/interrupts.o obj/rom.o obj/mapper0.o obj/bus.o -I$(INCLUDE) -L$(LIB) -l6502++ -lSDL2 -lpthread -o $(BUILD_NAME) $(FLAGS)
 
-obj/rom.o: include/rom.h src/rom.c
-	g++ -c -I $(INCLUDE) -c src/rom.c -o obj/rom.o $(FLAGS)
+obj/ricoh2A0X.o: include/ricoh2A0X.hpp src/ricoh2A0X.cc
+	clang++ -c -I $(INCLUDE) -c src/ricoh2A0X.cc -o obj/ricoh2A0X.o $(FLAGS)
 
-obj/bus.o: include/bus.h src/bus.c
-	g++ -c -I $(INCLUDE) -c src/bus.c -o obj/bus.o $(FLAGS)
+obj/bus.o: include/bus.hpp src/bus.cc
+	clang++ -c -I $(INCLUDE) -c src/bus.cc -o obj/bus.o $(FLAGS)
 
-obj/map.o: include/map.h src/map.c
-	g++ -c -I $(INCLUDE) -c src/map.c -o obj/map.o $(FLAGS)
+obj/interrupts.o: include/interrupts.hpp src/interrupts.cc
+	clang++ -c -I $(INCLUDE) -c src/interrupts.cc -o obj/interrupts.o $(FLAGS)
 
-obj/ppu.o: include/ppu.h src/ppu.cpp
-	g++ -c -I $(INCLUDE) -c src/ppu.cpp -o obj/ppu.o $(FLAGS)
+obj/mapper0.o: include/mappers/mapper0.hpp src/mappers/mapper0.cc 
+	clang++ -c -I $(INCLUDE) -c src/mappers/mapper0.cc -o obj/mapper0.o $(FLAGS)
 
-obj/jpd.o: include/jpd.h src/jpd.c
-	g++ -c -I $(INCLUDE) -c src/jpd.c   -o obj/jpd.o $(FLAGS)
+obj/rom.o: include/rom.hpp src/rom.cc
+	clang++ -c -I $(INCLUDE) -c src/rom.cc -o obj/rom.o $(FLAGS)
 
 clean:
 	rm obj/*
